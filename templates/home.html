@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload PDF</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 10px;
+        }
+        
+        .chat-box {
+            width: 100%;
+            max-width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 97vh;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .chat-message {
+            margin: 10px 0;
+        }
+        
+        .chat-message.bot {
+            text-align: left;
+        }
+        
+        .chat-message.user {
+            text-align: right;
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        #sendButton {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        
+        #sendButton:hover {
+            background-color: #0056b3;
+        }
+        
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row flex-nowrap">
+
+            <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-dark">
+                <div class="d-flex flex-column align-items-center align-items-sm-start my-5 px-3 pt-5 text-white min-vh-100">
+                    <a href="/" class="d-flex align-items-center py-5 mb-md-0 me-md-auto text-white text-decoration-none">
+                        <span class="fs-5 d-none d-sm-inline">Upload PDF File</span>
+                    </a>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <input type="file" id="pdfFile" name="pdfFile" accept="application/pdf" required>
+                        <button type="submit">Upload</button>
+                    </form>
+                    <div id="loader" class="loader"></div>
+                    <p id="message"></p>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="chat-container">
+                    <div class="chat-box">
+                        <div class="chat-messages" id="answer">
+                            <!-- Messages will appear here -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
+                            <button id="sendButton">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const loader = document.getElementById('loader');
+            const message = document.getElementById('message');
+            loader.style.display = 'block';
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loader.style.display = 'none';
+                message.innerText = data.message;
+            })
+            .catch(error => {
+                loader.style.display = 'none';
+                message.innerText = 'Error uploading file';
+            });
+        });
+
+        const answerDiv = document.getElementById('answer');
+        const submit_btn = document.getElementById('sendButton');
+        const input = document.getElementById('messageInput');
+        submit_btn.addEventListener("click", async (e) => {
+            console.log("Print")
+            e.preventDefault();
+            const response = await fetch("/answer", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({message: input.value})
+            });
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let output = "";
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                output += decoder.decode(value, { stream: true });
+                answerDiv.innerHTML = marked.parse(output);
+            }
+            answerDiv.innerHTML = marked.parse(output);
+        })
+    </script>
+</body>
+</html>
